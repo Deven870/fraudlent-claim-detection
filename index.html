@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Fraud Detection | AI Model Interface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class='bx bx-shield-quarter'></i> Healthcare Fraud Detection
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        {% if not model_loaded %}
+        <div class="alert alert-danger" role="alert">
+            <div class="d-flex align-items-center">
+                <i class='bx bx-error-circle fs-3 me-3'></i>
+                <div>
+                    <h4 class="alert-heading">Model Not Loaded!</h4>
+                    <p class="mb-0">The model files (knn_fraud_model.pkl and scaler.pkl) could not be found. Please ensure they exist in the application directory.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-lg-6" data-aos="fade-right" data-aos-duration="1000">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class='bx bx-line-chart me-2'></i>Model Performance</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="metric-card">
+                                    <h5><i class='bx bx-bullseye me-2'></i>Accuracy</h5>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success progress-width-100" role="progressbar">
+                                            {{ (model_metrics.accuracy * 100)|round(1) }}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="metric-card">
+                                    <h5><i class='bx bx-target-lock me-2'></i>Precision</h5>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-info progress-width-100" role="progressbar">
+                                            {{ (model_metrics.precision * 100)|round(1) }}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="metric-card">
+                                    <h5><i class='bx bx-search-alt me-2'></i>Recall</h5>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-warning progress-width-100" role="progressbar">
+                                            {{ (model_metrics.recall * 100)|round(1) }}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="metric-card">
+                                    <h5><i class='bx bx-balance me-2'></i>F1 Score</h5>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-danger progress-width-100" role="progressbar">
+                                            {{ (model_metrics.f1_score * 100)|round(1) }}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if model_metrics.confusion_matrix %}
+                        <div class="mt-4">
+                            <h5 class="mb-3"><i class='bx bx-grid-alt me-2'></i>Confusion Matrix</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm confusion-matrix">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th></th>
+                                            <th>Predicted Non-Fraud</th>
+                                            <th>Predicted Fraud</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <th>Actual Non-Fraud</th>
+                                            <td class="table-success">{{ model_metrics.confusion_matrix.true_negative }}</td>
+                                            <td class="table-danger">{{ model_metrics.confusion_matrix.false_positive }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Actual Fraud</th>
+                                            <td class="table-danger">{{ model_metrics.confusion_matrix.false_negative }}</td>
+                                            <td class="table-success">{{ model_metrics.confusion_matrix.true_positive }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge bg-success me-2">&nbsp;</span>
+                                        <small>Correct predictions: {{ model_metrics.confusion_matrix.true_negative + model_metrics.confusion_matrix.true_positive }}</small>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-danger me-2">&nbsp;</span>
+                                        <small>Incorrect predictions: {{ model_metrics.confusion_matrix.false_positive + model_metrics.confusion_matrix.false_negative }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <strong>Total samples:</strong> {{ model_metrics.confusion_matrix.true_negative + model_metrics.confusion_matrix.false_positive + model_metrics.confusion_matrix.false_negative + model_metrics.confusion_matrix.true_positive }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card" data-aos="fade-up" data-aos-duration="1000" data-aos-delay="200">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class='bx bx-bar-chart-alt-2 me-2'></i>Feature Importance</h4>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="featureImportanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6" data-aos="fade-left" data-aos-duration="1000">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class='bx bx-clipboard me-2'></i>Enter Claim Details</h4>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('predict') }}" method="post" id="predictionForm">
+                            <div class="mb-4">
+                                <h5 class="text-primary"><i class='bx bx-user me-2'></i>Patient Information</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="renaldiseaseindicator" class="form-label">Renal Disease Indicator</label>
+                                        <select class="form-select" id="renaldiseaseindicator" name="renaldiseaseindicator" required>
+                                            <option value="" selected disabled>Select value</option>
+                                            <option value="0">No (0)</option>
+                                            <option value="1">Yes (1)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="dr_age" class="form-label">Age</label>
+                                        <input type="number" min="0" step="1" class="form-control" id="dr_age" name="dr_age" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="text-primary"><i class='bx bx-money me-2'></i>Reimbursement Information</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="dr_inscclaimamtreimbursed" class="form-label">Claim Amount Reimbursed ($)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="0.01" class="form-control" id="dr_inscclaimamtreimbursed" name="dr_inscclaimamtreimbursed" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="dr_ipannualreimbursementamt" class="form-label">IP Annual Reimbursement ($)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="0.01" class="form-control" id="dr_ipannualreimbursementamt" name="dr_ipannualreimbursementamt" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="dr_opannualreimbursementamt" class="form-label">OP Annual Reimbursement ($)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="0.01" class="form-control" id="dr_opannualreimbursementamt" name="dr_opannualreimbursementamt" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="text-primary"><i class='bx bx-credit-card me-2'></i>Deductible Information</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label for="dr_deductibleamtpaid" class="form-label">Deductible Amount ($)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="0.01" class="form-control" id="dr_deductibleamtpaid" name="dr_deductibleamtpaid" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="dr_ipannualdeductibleamt" class="form-label">IP Annual Deductible ($)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="0.01" class="form-control" id="dr_ipannualdeductibleamt" name="dr_ipannualdeductibleamt" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="dr_opannualdeductibleamt" class="form-label">OP Annual Deductible ($)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" min="0" step="0.01" class="form-control" id="dr_opannualdeductibleamt" name="dr_opannualdeductibleamt" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="text-primary"><i class='bx bx-time me-2'></i>Duration Details</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="dr_los" class="form-label">Length of Stay (Days)</label>
+                                        <input type="number" min="0" step="0.01" class="form-control" id="dr_los" name="dr_los" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="dr_duration" class="form-label">Claim Duration (Days)</label>
+                                        <input type="number" min="0" step="0.01" class="form-control" id="dr_duration" name="dr_duration" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-secondary" id="fillSampleBtn">
+                                    <i class='bx bx-data me-2'></i>Fill Sample Data
+                                </button>
+                                <button type="reset" class="btn btn-outline-secondary">
+                                    <i class='bx bx-reset me-2'></i>Reset Form
+                                </button>
+                                <button type="submit" class="btn btn-primary" {% if not model_loaded %}disabled{% endif %}>
+                                    <i class='bx bx-analyse me-2'></i>Predict Fraud
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-5" id="about" data-aos="fade-up" data-aos-duration="1000">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class='bx bx-info-circle me-2'></i>About This System</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>This AI-powered system uses a K-Nearest Neighbors model trained on healthcare claims data to identify potentially fraudulent claims. The model analyzes various features including reimbursement amounts, deductibles, and patient information to make predictions.</p>
+                        
+                        <div class="alert alert-info mt-3">
+                            <h6 class="mb-2"><i class='bx bx-info-circle me-2'></i>Model Development Note</h6>
+                            <p class="mb-1">The top 10 features used in this model were identified using Random Forest feature importance during model development:</p>
+                            <ol class="mb-0 small">
+                                <li>Renal Disease Indicator</li>
+                                <li>Insurance Claim Amount Reimbursed</li>
+                                <li>Inpatient Annual Reimbursement Amount</li>
+                                <li>Outpatient Annual Reimbursement Amount</li>
+                                <li>Deductible Amount Paid</li>
+                                <li>Inpatient Annual Deductible Amount</li>
+                                <li>Outpatient Annual Deductible Amount</li>
+                                <li>Length of Stay (LOS)</li>
+                                <li>Claim Duration</li>
+                                <li>Patient Age</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="feature-card p-3 text-center">
+                                    <i class='bx bx-shield-quarter fs-1 text-primary mb-3'></i>
+                                    <h5>Fraud Detection</h5>
+                                    <p class="mb-0">Identifies potentially fraudulent claims with high accuracy</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="feature-card p-3 text-center">
+                                    <i class='bx bx-line-chart fs-1 text-primary mb-3'></i>
+                                    <h5>Real-time Analysis</h5>
+                                    <p class="mb-0">Provides instant prediction results with probability scores</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="feature-card p-3 text-center">
+                                    <i class='bx bx-bar-chart-alt-2 fs-1 text-primary mb-3'></i>
+                                    <h5>Visual Insights</h5>
+                                    <p class="mb-0">Visual representation of model performance and feature importance</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">Healthcare Fraud Detection System &copy; 2025</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    <script>
+        // Make feature importance data available to external JS
+        var featureImportance = JSON.parse('{{ model_metrics.feature_importance|tojson|safe }}');
+    </script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html> 
